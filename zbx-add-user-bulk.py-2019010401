@@ -1,0 +1,65 @@
+# -*- coding: utf-8 -*-
+# Exemplos:
+# https://pt.slideshare.net/JanssenLima/como-programar-a-api-do-zabbix
+
+from zabbix_api import ZabbixAPI
+import csv
+import subprocess
+import random
+import string
+
+zabbix_server = "http:///zabbix"
+username = ""
+password = ""
+
+conexao = ZabbixAPI(server = zabbix_server)
+conexao.login(username, password)
+
+special_chars = "#!@"
+
+# arquivo de origem
+file = open("/root/scripts/zabbix/zbx-add-user-bulk.txt",'rb')
+reader = csv.DictReader( file )
+
+print "Usuarios criados:"
+for line in reader:
+
+    # busca se usuario ja existe
+    user_alias = conexao.user.get({
+	"search": {"alias": line['alias']},
+	"output": ["alias"]
+	})
+
+    if not user_alias:
+      # cria senha se user e nem senha existirem
+      passwd = line['password']
+      if passwd == "":
+  	pwd_spec = random.choice(special_chars)
+  	pwd_subp = subprocess.check_output(['pwgen', '-c', '-n', '-s', '-B', '9', '1'])
+	pwd_subp = pwd_subp.replace("\n", "")
+	pwd_conc = pwd_subp + pwd_spec
+	pwd_list = list(pwd_conc)
+	random.shuffle(pwd_list)
+	passwd = ''.join(pwd_list)
+   
+      # busca o id do grupo informado
+      user_group_id = conexao.usergroup.get({
+ 	"search": {"name": line['group']},
+ 	"output": ["usrgrpid"]
+ 	})
+
+      # adiciona usuario
+      add_user = conexao.user.create ({
+   	"alias": line['alias'],
+   	"name": line['name'],
+   	"surname": line['surname'],
+   	"passwd": passwd,
+   	"usrgrps": {"usrgrpid": user_group_id[0]['usrgrpid']}
+   	})
+
+      print "user:",line['alias'],"\tpassword:",passwd,"\tgrupo:",line['group']
+      
+    else:
+      print "user:",line['alias'],"\tja existe" 
+
+file.close()

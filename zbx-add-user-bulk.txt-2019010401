@@ -1,0 +1,3 @@
+alias,name,surname,password,group
+testeuser,Teste,User,,GPS-CAR
+testeuser2,Teste,User2,,GPS-CAR
